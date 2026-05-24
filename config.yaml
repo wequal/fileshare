@@ -1,0 +1,15 @@
+host: "0.0.0.0"
+port: 8443
+data_root: "data/storage"
+database_path: "data/fileshare.db"
+jwt_secret: "dev-change-in-production-use-long-random"
+jwt_algorithm: "HS256"
+jwt_expire_minutes: 1440
+bootstrap_admin_username: "admin"
+bootstrap_admin_password: "changeme"
+allow_public_registration: false
+chunk_size_mb: 8
+max_parallel_parts: 6
+upload_session_expire_hours: 24
+cors_origins:
+  - "*"

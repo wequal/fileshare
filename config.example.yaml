@@ -1,0 +1,36 @@
+# Copy to config.yaml and adjust paths for your Windows PC.
+
+host: "0.0.0.0"
+port: 8443
+
+# NTFS root for all shared data (created on first run if missing)
+data_root: "D:/FileShareData"
+
+# SQLite database path (relative to fileshare/ or absolute)
+database_path: "data/fileshare.db"
+
+# JWT settings — change secret in production
+jwt_secret: "change-me-to-a-long-random-string"
+jwt_algorithm: "HS256"
+jwt_expire_minutes: 1440
+
+# First-run admin (created only if no users exist)
+bootstrap_admin_username: "admin"
+bootstrap_admin_password: "changeme"
+
+# Registration: true = anyone can register (gets no grants until admin assigns)
+allow_public_registration: false
+
+# Parallel multipart upload
+chunk_size_mb: 8
+max_parallel_parts: 6
+upload_session_expire_hours: 24
+
+# Optional: restrict clients to LAN subnets (empty = allow all)
+# ip_allowlist:
+#   - "192.168.0.0/16"
+#   - "10.0.0.0/8"
+
+# CORS origins for web UI (use * for home LAN dev)
+cors_origins:
+  - "*"
