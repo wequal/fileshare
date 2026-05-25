@@ -13,6 +13,10 @@ let canWrite = false;
 let chunkSize = 8 * 1024 * 1024;
 let maxParallel = 4;
 
+const PREVIEWABLE_IMAGE_EXT = /\.(jpe?g|png|gif|webp|bmp|avif|svg)$/i;
+const listObjectUrls = new Set();
+let thumbObserver = null;
+
 const $ = (id) => document.getElementById(id);
 
 function show(el) { el.classList.remove("hidden"); }
@@ -52,6 +56,116 @@ function iconFor(entry) {
   if (entry.type === "image") return "🖼";
   if (entry.type === "video") return "🎬";
   return "📄";
+}
+
+function canPreviewInline(entry) {
+  if (entry.type !== "image") return false;
+  return PREVIEWABLE_IMAGE_EXT.test(entry.name || "");
+}
+
+async function fetchAsBlob(path) {
+  const res = await fetch(
+    `${API}/files/download?path=${encodeURIComponent(path)}`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (res.status === 401) {
+    logout();
+    throw new Error("Session expired");
+  }
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.blob();
+}
+
+function trackedObjectUrl(blob) {
+  const url = URL.createObjectURL(blob);
+  listObjectUrls.add(url);
+  return url;
+}
+
+function revokeListObjectUrls() {
+  for (const url of listObjectUrls) URL.revokeObjectURL(url);
+  listObjectUrls.clear();
+}
+
+function getThumbObserver() {
+  if (thumbObserver) return thumbObserver;
+  thumbObserver = new IntersectionObserver(
+    (entries) => {
+      for (const ent of entries) {
+        if (!ent.isIntersecting) continue;
+        const img = ent.target;
+        thumbObserver.unobserve(img);
+        loadThumbnail(img);
+      }
+    },
+    { rootMargin: "200px 0px" }
+  );
+  return thumbObserver;
+}
+
+async function loadThumbnail(img) {
+  const path = img.dataset.path;
+  if (!path) return;
+  try {
+    const blob = await fetchAsBlob(path);
+    const url = trackedObjectUrl(blob);
+    img.onload = () => img.classList.add("loaded");
+    img.onerror = () => {
+      img.remove();
+    };
+    img.src = url;
+  } catch {
+    img.remove();
+  }
+}
+
+function openImagePreview(path, name) {
+  const overlay = document.createElement("div");
+  overlay.className = "preview-overlay";
+  overlay.innerHTML = `
+    <div class="preview-toolbar">
+      <span class="preview-name"></span>
+      <button type="button" class="preview-close">Close</button>
+    </div>
+    <div class="preview-body"><div class="preview-loader">Loading…</div></div>
+  `;
+  overlay.querySelector(".preview-name").textContent = name;
+  document.body.appendChild(overlay);
+
+  let blobUrl = null;
+  const close = () => {
+    overlay.remove();
+    if (blobUrl) URL.revokeObjectURL(blobUrl);
+    document.removeEventListener("keydown", onKey);
+  };
+  function onKey(e) {
+    if (e.key === "Escape") close();
+  }
+  overlay.querySelector(".preview-close").addEventListener("click", close);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay || e.target.classList.contains("preview-body")) {
+      close();
+    }
+  });
+  document.addEventListener("keydown", onKey);
+
+  fetchAsBlob(path)
+    .then((blob) => {
+      blobUrl = URL.createObjectURL(blob);
+      const img = document.createElement("img");
+      img.className = "preview-image";
+      img.alt = name;
+      img.src = blobUrl;
+      const body = overlay.querySelector(".preview-body");
+      body.innerHTML = "";
+      body.appendChild(img);
+    })
+    .catch((e) => {
+      const body = overlay.querySelector(".preview-body");
+      body.innerHTML = `<div class="preview-error">Failed to load: ${escapeHtml(
+        e.message || "unknown error"
+      )}</div>`;
+    });
 }
 
 function logout() {
@@ -94,6 +208,11 @@ async function loadDirectory(path) {
 
   const list = $("file-list");
   list.innerHTML = "";
+  if (thumbObserver) {
+    thumbObserver.disconnect();
+    thumbObserver = null;
+  }
+  revokeListObjectUrls();
 
   const entries = (data.entries || []).sort((a, b) => {
     if (a.type === "directory" && b.type !== "directory") return -1;
@@ -107,18 +226,39 @@ async function loadDirectory(path) {
     hide($("empty-msg"));
   }
 
+  const observer = getThumbObserver();
+
   for (const entry of entries) {
     const li = document.createElement("li");
     const isDir = entry.type === "directory";
+    const previewable = canPreviewInline(entry);
 
     li.innerHTML = `
-      <span class="icon">${iconFor(entry)}</span>
+      <span class="icon${previewable ? " is-preview" : ""}">${iconFor(entry)}</span>
       <span class="meta">
         <span class="name">${escapeHtml(entry.name)}</span>
         <span class="detail">${isDir ? "Folder" : formatSize(entry.size)}</span>
       </span>
       <span class="actions"></span>
     `;
+
+    const iconEl = li.querySelector(".icon");
+
+    if (previewable) {
+      const img = document.createElement("img");
+      img.className = "thumb";
+      img.alt = "";
+      img.loading = "lazy";
+      img.decoding = "async";
+      img.dataset.path = entry.path;
+      iconEl.appendChild(img);
+      observer.observe(img);
+
+      iconEl.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openImagePreview(entry.path, entry.name);
+      });
+    }
 
     const actions = li.querySelector(".actions");
 
@@ -148,6 +288,7 @@ async function loadDirectory(path) {
 
     li.addEventListener("click", () => {
       if (isDir) loadDirectory(entry.path);
+      else if (previewable) openImagePreview(entry.path, entry.name);
     });
 
     list.appendChild(li);

@@ -4,7 +4,7 @@ host: "0.0.0.0"
 port: 8443
 
 # NTFS root for all shared data (created on first run if missing)
-data_root: "D:/FileShareData"
+data_root: "D:/old/relex/personal"
 
 # SQLite database path (relative to fileshare/ or absolute)
 database_path: "data/fileshare.db"
