@@ -9,6 +9,7 @@ bootstrap_admin_username: "admin"
 bootstrap_admin_password: "changeme"
 allow_public_registration: false
 chunk_size_mb: 8
+mobile_chunk_size_mb: 1
 max_parallel_parts: 6
 upload_session_expire_hours: 24
 cors_origins:

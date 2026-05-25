@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#1a1a2e" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
+  <title>Home Fileshare</title>
+  <link rel="stylesheet" href="/styles.css?v=9" />
+</head>
+<body>
+  <div id="app">
+    <section id="login-view" class="view">
+      <h1>Home Fileshare</h1>
+      <p class="subtitle">Upload and download photos &amp; videos on your LAN</p>
+      <form id="login-form">
+        <label>Username<input type="text" id="username" autocomplete="username" required /></label>
+        <label>Password<input type="password" id="password" autocomplete="current-password" required /></label>
+        <button type="submit" id="login-btn">Sign in</button>
+      </form>
+      <p id="login-error" class="error hidden"></p>
+    </section>
+
+    <section id="browser-view" class="view hidden">
+      <header class="top-bar">
+        <button type="button" id="back-btn" class="icon-btn hidden" aria-label="Back">←</button>
+        <h2 id="current-path">/</h2>
+        <button type="button" id="logout-btn" class="text-btn">Logout</button>
+      </header>
+
+      <div id="toolbar" class="toolbar">
+        <div id="upload-wrap" class="upload-wrap">
+          <input type="file" id="file-input" multiple accept="video/quicktime,video/mp4,video/*,image/*" />
+          <span class="upload-btn">Upload</span>
+        </div>
+        <button type="button" id="mkdir-btn" class="secondary">New folder</button>
+        <span id="upload-progress" class="progress-text hidden"></span>
+      </div>
+
+      <div id="drop-zone" class="drop-zone hidden">Drop files to upload</div>
+      <ul id="file-list" class="file-list"></ul>
+      <p id="empty-msg" class="empty hidden">This folder is empty</p>
+    </section>
+  </div>
+  <script src="/app.js?v=9"></script>
+</body>
+</html>
