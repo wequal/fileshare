@@ -40,6 +40,35 @@ Full step-by-step (copy folder, config, firewall, iPhone URL, users): **[DEPLOY.
    .\scripts\open_firewall.ps1 -Port 8443
    ```
 
+## Admin app (Windows desktop)
+
+A point-and-click control panel for non-technical admins. Edit all settings,
+manage multiple users with per-folder read/write permissions, control the
+server, and see the LAN URL — no command line needed.
+
+```bat
+run_admin.bat
+```
+
+This creates/uses the local `venv`, installs requirements, and launches the app.
+Tabs:
+
+- **Connection** — shows `http://<PC-LAN-IP>:<port>` (large, copyable) and all network addresses.
+- **Settings** — edit `data_root` (folder picker), `host`, `port`, `jwt_secret`, session length, registration, chunk sizes, IP allowlist, and CORS. Saves to `config.yaml`.
+- **Users** — add/delete users, change passwords, promote/demote admins. Works even when the server is stopped (writes directly to SQLite).
+- **Grants** — give each user a logical path mapped to a physical folder under `data_root`, with Read/Write checkboxes.
+- **Server Control** — Start/Stop/Restart the server, view live logs, open the firewall, install/uninstall the Windows service, open the data folder or `config.yaml`.
+
+Build a standalone `.exe` (optional):
+
+```bat
+venv\Scripts\activate
+pip install -r admin_app\requirements-admin.txt
+pyinstaller admin_app\build_exe.spec
+```
+
+Output: `dist\HomeFileshareAdmin.exe`.
+
 ## Admin: second user and folder
 
 After login as admin, use API or curl from a PC:
