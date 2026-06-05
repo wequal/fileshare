@@ -8,7 +8,7 @@ LAN photo and video server for iPhone (Safari / PWA) and future native iOS apps.
 - JWT login; admin-managed users and folder grants
 - TFTP-like semantics: authenticated upload (PUT) and download (GET) per assigned folder
 - Simple upload for small files; **parallel chunked upload** for large videos (8 MiB chunks, up to 6 parallel connections)
-- Windows-friendly: firewall script, optional NSSM service
+- Windows-friendly: firewall script, optional scheduled-task service
 
 ## Deploy on another PC
 
@@ -59,15 +59,42 @@ Tabs:
 - **Grants** — give each user a logical path mapped to a physical folder under `data_root`, with Read/Write checkboxes.
 - **Server Control** — Start/Stop/Restart the server, view live logs, open the firewall, install/uninstall the Windows service, open the data folder or `config.yaml`.
 
-Build a standalone `.exe` (optional):
+### Build a packaged `.exe` (optional)
+
+Run these from the project root **inside the venv** (the bare `pyinstaller`
+command will not be found otherwise):
 
 ```bat
 venv\Scripts\activate
 pip install -r admin_app\requirements-admin.txt
-pyinstaller admin_app\build_exe.spec
+venv\Scripts\python.exe -m PyInstaller admin_app\build_exe.spec --noconfirm
 ```
 
 Output: `dist\HomeFileshareAdmin.exe`.
+
+### What the `.exe` needs to run
+
+`HomeFileshareAdmin.exe` is **only the admin control panel** — it does not
+contain the server. When you click **Start**, it runs the real server using
+the project's `venv` Python against the on-disk `server\` code. The exe locates
+the install by searching upward from its own location for the folder that
+contains `server\main.py`, so keep it inside the project (leaving it in
+`dist\` works too).
+
+The install folder must contain:
+
+| Item | Purpose |
+|------|---------|
+| `server\` | The FastAPI/uvicorn backend that is launched. Required. |
+| `venv\` | Python environment with server deps. Run `run_server.bat` once to create it. Required. |
+| `web\` | Browser/phone client UI. Required for the web GUI. |
+| `config.yaml` | Settings; auto-created from `config.example.yaml` if missing. |
+| `data\` | Holds `fileshare.db` (users/grants); created automatically. |
+| your `data_root` | Where shared files are stored (any path you set in Settings). |
+| `scripts\` | Optional; only for the firewall and service buttons. |
+
+The exe is not a self-contained server you can copy to a fresh PC on its own —
+it manages a local install that already has `server\` and `venv\`.
 
 ## Admin: second user and folder
 
@@ -125,13 +152,20 @@ Native iOS notes: [docs/IOS_CLIENT.md](docs/IOS_CLIENT.md).
 
 ## Run as Windows service
 
-1. Install [NSSM](https://nssm.cc/).
-2. Create venv via `run_server.bat` once.
-3. As Administrator:
+Runs as a Windows Scheduled Task that starts the server at boot. No extra
+tools required.
+
+1. Create venv via `run_server.bat` once.
+2. As Administrator:
 
    ```powershell
-   .\scripts\install_service.ps1
-   nssm start HomeFileshare
+   .\scripts\install_service.ps1 -Port 8443
+   ```
+
+   To remove it later (also as Administrator):
+
+   ```powershell
+   .\scripts\uninstall_service.ps1
    ```
 
 ## Security

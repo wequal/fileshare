@@ -171,18 +171,23 @@ Without admin you cannot install a Windows service easily. Options:
 3. Action: Start program → `C:\Apps\fileshare\run_server.bat`
 4. Start in: `C:\Apps\fileshare`
 
-## 8. Run as Windows service (admin + NSSM)
+## 8. Run as Windows service (admin, scheduled task)
 
-If the new PC has admin:
+If the new PC has admin (starts at boot, no logged-in user required, no
+extra downloads):
 
-1. Install [NSSM](https://nssm.cc/download)
-2. Run once: `run_server.bat` (creates `venv`)
-3. Administrator PowerShell:
+1. Run once: `run_server.bat` (creates `venv`)
+2. Administrator PowerShell:
 
 ```powershell
 cd C:\Apps\fileshare
-.\scripts\install_service.ps1
-nssm start HomeFileshare
+.\scripts\install_service.ps1 -Port 8443
+```
+
+Remove it later with:
+
+```powershell
+.\scripts\uninstall_service.ps1
 ```
 
 ## 9. Verify checklist
