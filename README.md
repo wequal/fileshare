@@ -8,7 +8,7 @@ LAN photo and video server for iPhone (Safari / PWA) and future native iOS apps.
 - JWT login; admin-managed users and folder grants
 - TFTP-like semantics: authenticated upload (PUT) and download (GET) per assigned folder
 - Simple upload for small files; **parallel chunked upload** for large videos (8 MiB chunks, up to 6 parallel connections)
-- Windows-friendly: firewall script, optional NSSM service
+- Windows-friendly: firewall script, optional scheduled-task service
 
 ## Deploy on another PC
 
@@ -152,13 +152,20 @@ Native iOS notes: [docs/IOS_CLIENT.md](docs/IOS_CLIENT.md).
 
 ## Run as Windows service
 
-1. Install [NSSM](https://nssm.cc/).
-2. Create venv via `run_server.bat` once.
-3. As Administrator:
+Runs as a Windows Scheduled Task that starts the server at boot. No extra
+tools required.
+
+1. Create venv via `run_server.bat` once.
+2. As Administrator:
 
    ```powershell
-   .\scripts\install_service.ps1
-   nssm start HomeFileshare
+   .\scripts\install_service.ps1 -Port 8443
+   ```
+
+   To remove it later (also as Administrator):
+
+   ```powershell
+   .\scripts\uninstall_service.ps1
    ```
 
 ## Security

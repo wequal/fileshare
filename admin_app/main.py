@@ -27,6 +27,8 @@ REPO_ROOT = install_root()
 
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
+# Use black button text in both light and dark mode.
+ctk.ThemeManager.theme["CTkButton"]["text_color"] = ["black", "black"]
 
 
 class AdminApp(ctk.CTk):
@@ -80,7 +82,7 @@ class AdminApp(ctk.CTk):
                 height=40,
                 corner_radius=8,
                 fg_color="transparent",
-                text_color=("gray10", "gray90"),
+                text_color="black",
                 hover_color=("gray75", "gray25"),
                 command=lambda k=key: self._show_tab(k),
             )
@@ -946,12 +948,12 @@ class AdminApp(ctk.CTk):
     def _install_service(self) -> None:
         if not messagebox.askyesno(
             "Install service",
-            "Install Home Fileshare as a Windows service?\n"
-            "This requires NSSM (nssm.exe) in PATH and admin rights.",
+            "Install Home Fileshare as a Windows scheduled task that starts "
+            "at boot?\nThis requires admin rights (no extra downloads needed).",
         ):
             return
         try:
-            elevation.install_service()
+            elevation.install_service(self.settings.port)
         except Exception as e:
             messagebox.showerror("Service", str(e))
 

@@ -18,7 +18,12 @@ SCRIPTS_DIR = REPO_ROOT / "scripts"
 def _run_elevated(ps_command: str) -> None:
     """Invoke the given PowerShell command line elevated via Start-Process."""
     # Outer powershell calls inner one with RunAs to trigger UAC prompt.
-    quoted = ps_command.replace("'", "''")
+    # The command is embedded inside a double-quoted string below, so escape
+    # the characters that are special there (backtick, $, ") -- NOT single
+    # quotes, which are literal inside double quotes.
+    quoted = (
+        ps_command.replace("`", "``").replace("$", "`$").replace('"', '`"')
+    )
     outer = (
         "Start-Process powershell -Verb RunAs "
         "-ArgumentList '-NoProfile','-ExecutionPolicy','Bypass',"
@@ -41,23 +46,23 @@ def open_firewall(port: int, rule_name: str = "Home Fileshare") -> None:
     _run_elevated(cmd)
 
 
-def install_service(nssm_path: str = "nssm") -> None:
+def install_service(port: int = 8443) -> None:
     script = SCRIPTS_DIR / "install_service.ps1"
     if not script.is_file():
         raise FileNotFoundError(f"Missing {script}")
     cmd = (
-        f"& '{script}' -NssmPath '{nssm_path}'; "
+        f"& '{script}' -Port {int(port)}; "
         "Read-Host 'Done. Press Enter to close'"
     )
     _run_elevated(cmd)
 
 
-def uninstall_service(
-    nssm_path: str = "nssm", service_name: str = "HomeFileshare"
-) -> None:
+def uninstall_service() -> None:
+    script = SCRIPTS_DIR / "uninstall_service.ps1"
+    if not script.is_file():
+        raise FileNotFoundError(f"Missing {script}")
     cmd = (
-        f"& '{nssm_path}' stop '{service_name}'; "
-        f"& '{nssm_path}' remove '{service_name}' confirm; "
+        f"& '{script}'; "
         "Read-Host 'Done. Press Enter to close'"
     )
     _run_elevated(cmd)
