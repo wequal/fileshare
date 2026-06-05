@@ -1,0 +1,636 @@
+openapi: 3.1.0
+info:
+  title: Home Fileshare
+  description: LAN photo/video file server with per-user folder ACLs
+  version: 1.0.0
+paths:
+  /api/v1/health:
+    get:
+      summary: Health
+      operationId: health_api_v1_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/v1/auth/login:
+    post:
+      summary: Login
+      operationId: login_api_v1_auth_login_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/register:
+    post:
+      summary: Register
+      operationId: register_api_v1_auth_register_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/me:
+    get:
+      summary: Me
+      operationId: me_api_v1_auth_me_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+      security:
+      - HTTPBearer: []
+  /api/v1/files:
+    get:
+      summary: List Files
+      operationId: list_files_api_v1_files_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: path
+        in: query
+        required: false
+        schema:
+          type: string
+          default: /
+          title: Path
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      summary: Delete File
+      operationId: delete_file_api_v1_files_delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: path
+        in: query
+        required: true
+        schema:
+          type: string
+          title: Path
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/files/download:
+    get:
+      summary: Download File
+      operationId: download_file_api_v1_files_download_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: path
+        in: query
+        required: true
+        schema:
+          type: string
+          title: Path
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/files/upload:
+    post:
+      summary: Upload Simple
+      operationId: upload_simple_api_v1_files_upload_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: path
+        in: query
+        required: true
+        schema:
+          type: string
+          title: Path
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_upload_simple_api_v1_files_upload_post'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/files/mkdir:
+    post:
+      summary: Create Dir
+      operationId: create_dir_api_v1_files_mkdir_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: path
+        in: query
+        required: true
+        schema:
+          type: string
+          title: Path
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/files/uploads:
+    post:
+      summary: Initiate Multipart
+      operationId: initiate_multipart_api_v1_files_uploads_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InitiateUploadRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/v1/files/uploads/{upload_id}:
+    get:
+      summary: Upload Status
+      operationId: upload_status_api_v1_files_uploads__upload_id__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: upload_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Upload Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/files/uploads/{upload_id}/parts/{part_number}:
+    put:
+      summary: Upload Part
+      operationId: upload_part_api_v1_files_uploads__upload_id__parts__part_number__put
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: upload_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Upload Id
+      - name: part_number
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Part Number
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/files/uploads/{upload_id}/complete:
+    post:
+      summary: Complete Multipart
+      operationId: complete_multipart_api_v1_files_uploads__upload_id__complete_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: upload_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Upload Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/admin/users:
+    get:
+      tags:
+      - admin
+      summary: List Users
+      operationId: list_users_api_v1_admin_users_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/UserInfo'
+                type: array
+                title: Response List Users Api V1 Admin Users Get
+      security:
+      - HTTPBearer: []
+    post:
+      tags:
+      - admin
+      summary: Create User
+      operationId: create_user_api_v1_admin_users_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserInfo'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/v1/admin/grants:
+    get:
+      tags:
+      - admin
+      summary: List Grants
+      operationId: list_grants_api_v1_admin_grants_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/GrantInfo'
+                type: array
+                title: Response List Grants Api V1 Admin Grants Get
+      security:
+      - HTTPBearer: []
+    put:
+      tags:
+      - admin
+      summary: Set Grant
+      operationId: set_grant_api_v1_admin_grants_put
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GrantRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/v1/admin/grants/{grant_id}:
+    delete:
+      tags:
+      - admin
+      summary: Delete Grant
+      operationId: delete_grant_api_v1_admin_grants__grant_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: grant_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Grant Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    Body_upload_simple_api_v1_files_upload_post:
+      properties:
+        file:
+          type: string
+          contentMediaType: application/octet-stream
+          title: File
+      type: object
+      required:
+      - file
+      title: Body_upload_simple_api_v1_files_upload_post
+    CreateUserRequest:
+      properties:
+        username:
+          type: string
+          maxLength: 64
+          minLength: 2
+          title: Username
+        password:
+          type: string
+          maxLength: 128
+          minLength: 6
+          title: Password
+        is_admin:
+          type: boolean
+          title: Is Admin
+          default: false
+      type: object
+      required:
+      - username
+      - password
+      title: CreateUserRequest
+    GrantInfo:
+      properties:
+        id:
+          type: integer
+          title: Id
+        username:
+          type: string
+          title: Username
+        logical_path:
+          type: string
+          title: Logical Path
+        physical_path:
+          type: string
+          title: Physical Path
+        can_read:
+          type: boolean
+          title: Can Read
+        can_write:
+          type: boolean
+          title: Can Write
+      type: object
+      required:
+      - id
+      - username
+      - logical_path
+      - physical_path
+      - can_read
+      - can_write
+      title: GrantInfo
+    GrantRequest:
+      properties:
+        username:
+          type: string
+          title: Username
+        logical_path:
+          type: string
+          title: Logical Path
+        physical_path:
+          type: string
+          title: Physical Path
+        can_read:
+          type: boolean
+          title: Can Read
+          default: true
+        can_write:
+          type: boolean
+          title: Can Write
+          default: false
+      type: object
+      required:
+      - username
+      - logical_path
+      - physical_path
+      title: GrantRequest
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    InitiateUploadRequest:
+      properties:
+        path:
+          type: string
+          title: Path
+        filename:
+          type: string
+          title: Filename
+        total_size:
+          type: integer
+          minimum: 0.0
+          title: Total Size
+      type: object
+      required:
+      - path
+      - filename
+      - total_size
+      title: InitiateUploadRequest
+    LoginRequest:
+      properties:
+        username:
+          type: string
+          title: Username
+        password:
+          type: string
+          title: Password
+      type: object
+      required:
+      - username
+      - password
+      title: LoginRequest
+    RegisterRequest:
+      properties:
+        username:
+          type: string
+          maxLength: 64
+          minLength: 2
+          title: Username
+        password:
+          type: string
+          maxLength: 128
+          minLength: 6
+          title: Password
+      type: object
+      required:
+      - username
+      - password
+      title: RegisterRequest
+    TokenResponse:
+      properties:
+        access_token:
+          type: string
+          title: Access Token
+        token_type:
+          type: string
+          title: Token Type
+          default: bearer
+        username:
+          type: string
+          title: Username
+        is_admin:
+          type: boolean
+          title: Is Admin
+      type: object
+      required:
+      - access_token
+      - username
+      - is_admin
+      title: TokenResponse
+    UserInfo:
+      properties:
+        id:
+          type: integer
+          title: Id
+        username:
+          type: string
+          title: Username
+        is_admin:
+          type: boolean
+          title: Is Admin
+      type: object
+      required:
+      - id
+      - username
+      - is_admin
+      title: UserInfo
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      scheme: bearer
