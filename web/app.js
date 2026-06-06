@@ -265,8 +265,9 @@ async function loadDirectory(path) {
     if (!isDir) {
       const dl = document.createElement("a");
       dl.textContent = "Get";
-      dl.href = `${API}/files/download?path=${encodeURIComponent(entry.path)}`;
+      dl.href = "#";
       dl.addEventListener("click", (e) => {
+        e.preventDefault();
         e.stopPropagation();
         downloadWithAuth(entry.path, entry.name);
       });
@@ -302,12 +303,22 @@ function escapeHtml(s) {
 }
 
 async function downloadWithAuth(path, filename) {
-  const res = await fetch(
-    `${API}/files/download?path=${encodeURIComponent(path)}`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
+  let res;
+  try {
+    res = await fetch(
+      `${API}/files/download?path=${encodeURIComponent(path)}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+  } catch (e) {
+    alert(`Download failed: ${e.message}`);
+    return;
+  }
+  if (res.status === 401) {
+    logout();
+    return;
+  }
   if (!res.ok) {
-    alert("Download failed");
+    alert(`Download failed (HTTP ${res.status})`);
     return;
   }
   const blob = await res.blob();
@@ -315,8 +326,13 @@ async function downloadWithAuth(path, filename) {
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
+  a.rel = "noopener";
+  // iOS Safari needs the anchor in the DOM, and revoking the object URL
+  // synchronously can cancel the in-flight download, so defer it.
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
 function isVideoFile(file) {
