@@ -27,6 +27,7 @@ a = Analysis(
         "passlib.handlers.bcrypt",
         "server.config",
         "server.database",
+        "server.tls",
     ],
     hookspath=[],
     hooksconfig={},

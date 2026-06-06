@@ -54,7 +54,7 @@ This creates/uses the local `venv`, installs requirements, and launches the app.
 Tabs:
 
 - **Connection** — shows `http://<PC-LAN-IP>:<port>` (large, copyable) and all network addresses.
-- **Settings** — edit `data_root` (folder picker), `host`, `port`, `jwt_secret`, session length, registration, chunk sizes, IP allowlist, and CORS. Saves to `config.yaml`.
+- **Settings** — edit `data_root` (folder picker), `host`, `port`, **Use HTTPS**, `jwt_secret`, session length, registration, chunk sizes, IP allowlist, and CORS. Saves to `config.yaml`.
 - **Users** — add/delete users, change passwords, promote/demote admins. Works even when the server is stopped (writes directly to SQLite).
 - **Grants** — give each user a logical path mapped to a physical folder under `data_root`, with Read/Write checkboxes.
 - **Server Control** — Start/Stop/Restart the server, view live logs, open the firewall, install/uninstall the Windows service, open the data folder or `config.yaml`.
@@ -168,22 +168,40 @@ tools required.
    .\scripts\uninstall_service.ps1
    ```
 
+## HTTPS (iPhone "Save to Photos")
+
+Saving photos/videos straight into the iPhone **Photos** app goes through the
+iOS Share Sheet, which browsers expose **only over HTTPS** (a secure context).
+Enable it with the **Use HTTPS** switch in the admin app, or set
+`use_https: true` in `config.yaml`. A self-signed certificate covering the PC's
+LAN IPs is generated automatically on start (or run
+`venv\Scripts\python scripts\generate_cert.py`).
+
+On the iPhone, open `https://<PC-LAN-IP>:8443` and trust the certificate once
+(**Settings → General → VPN & Device Management**, then **Certificate Trust
+Settings**). Full walkthrough: **[DEPLOY.md](DEPLOY.md)**.
+
+Without HTTPS the app still works — the "Get" button just downloads into the
+Files app instead of offering one-tap "Save to Photos".
+
 ## Security
 
 - Change default admin password and `jwt_secret` before use.
 - Use `ip_allowlist` in config to limit to LAN subnets.
 - Do not port-forward to the internet without VPN (e.g. Tailscale).
-- HTTP is acceptable on a trusted LAN; use HTTPS for stricter setups.
+- HTTP is acceptable on a trusted LAN; enable `use_https` for stricter setups
+  (and for iPhone "Save to Photos").
 
 ## Project layout
 
 ```
 fileshare/
-  server/          # FastAPI backend
+  server/          # FastAPI backend (TLS helper in tls.py)
   web/             # Safari PWA client
-  scripts/         # Firewall, service, OpenAPI export
+  scripts/         # Firewall, service, OpenAPI export, cert generation
   docs/            # OpenAPI + iOS guide
   config.yaml      # Local config (gitignored)
+  certs/           # Self-signed TLS cert/key when use_https (gitignored)
 ```
 
 ## License

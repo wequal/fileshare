@@ -15,3 +15,6 @@ upload_session_expire_hours: 24
 cors_origins:
 - '*'
 ip_allowlist: []
+use_https: true
+tls_cert_file: certs/server.crt
+tls_key_file: certs/server.key

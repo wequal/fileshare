@@ -190,16 +190,17 @@ class AdminApp(ctk.CTk):
 
     def _refresh_connection(self) -> None:
         port = self.settings.port
+        scheme = "https" if self.settings.use_https else "http"
         primary = network.primary_lan_ip() or "127.0.0.1"
-        self.url_label.configure(text=f"http://{primary}:{port}")
-        self._current_url = f"http://{primary}:{port}"
+        self.url_label.configure(text=f"{scheme}://{primary}:{port}")
+        self._current_url = f"{scheme}://{primary}:{port}"
 
         for child in self.ip_list_frame.winfo_children():
             child.destroy()
 
         ips = network.all_ipv4_addresses() or ["127.0.0.1"]
         for i, ip in enumerate(ips):
-            url = f"http://{ip}:{port}"
+            url = f"{scheme}://{ip}:{port}"
             row = ctk.CTkFrame(self.ip_list_frame, fg_color="transparent")
             row.grid(row=i, column=0, sticky="ew", padx=10, pady=4)
             row.grid_columnconfigure(0, weight=1)
@@ -274,6 +275,16 @@ class AdminApp(ctk.CTk):
         ctk.CTkEntry(f, textvariable=self._setting_vars["port"], width=140).grid(
             row=r, column=1, sticky="w", pady=8
         )
+        r += 1
+
+        # use_https
+        add_label("Use HTTPS (needed for iPhone Save to Photos)", r)
+        self._setting_vars["use_https"] = tk.BooleanVar()
+        ctk.CTkSwitch(
+            f,
+            text="",
+            variable=self._setting_vars["use_https"],
+        ).grid(row=r, column=1, sticky="w", pady=8)
         r += 1
 
         # jwt secret with show/hide
@@ -394,6 +405,7 @@ class AdminApp(ctk.CTk):
         self._setting_vars["data_root"].set(s.data_root)
         self._setting_vars["host"].set(s.host)
         self._setting_vars["port"].set(str(s.port))
+        self._setting_vars["use_https"].set(s.use_https)
         self._setting_vars["jwt_secret"].set(s.jwt_secret)
         self._setting_vars["jwt_expire_minutes"].set(str(s.jwt_expire_minutes))
         self._setting_vars["allow_public_registration"].set(
@@ -417,6 +429,7 @@ class AdminApp(ctk.CTk):
             "data_root": self._setting_vars["data_root"].get().strip(),
             "host": self._setting_vars["host"].get().strip() or "0.0.0.0",
             "port": int(self._setting_vars["port"].get()),
+            "use_https": bool(self._setting_vars["use_https"].get()),
             "jwt_secret": self._setting_vars["jwt_secret"].get(),
             "jwt_expire_minutes": int(
                 self._setting_vars["jwt_expire_minutes"].get()
@@ -475,7 +488,9 @@ class AdminApp(ctk.CTk):
                 "Restart server?",
                 "The server is running. Restart it to apply the new settings?",
             ):
-                self.server.restart(self.settings.host, self.settings.port)
+                self.server.restart(
+                    self.settings.host, self.settings.port, self.settings
+                )
 
         self._refresh_connection()
 
@@ -906,7 +921,9 @@ class AdminApp(ctk.CTk):
     def _start_server(self) -> None:
         self.settings = config_io.load_settings()
         try:
-            self.server.start(self.settings.host, self.settings.port)
+            self.server.start(
+                self.settings.host, self.settings.port, self.settings
+            )
         except Exception as e:
             messagebox.showerror("Could not start server", str(e))
 
@@ -916,7 +933,9 @@ class AdminApp(ctk.CTk):
     def _restart_server(self) -> None:
         self.settings = config_io.load_settings()
         try:
-            self.server.restart(self.settings.host, self.settings.port)
+            self.server.restart(
+                self.settings.host, self.settings.port, self.settings
+            )
         except Exception as e:
             messagebox.showerror("Could not start server", str(e))
 

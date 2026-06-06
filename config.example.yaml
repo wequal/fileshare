@@ -3,6 +3,14 @@
 host: "0.0.0.0"
 port: 8443
 
+# HTTPS: set true to serve over TLS. Required for iPhone "Save to Photos"
+# (the Web Share API only works in a secure context). When enabled and the
+# cert/key files below are missing, a self-signed certificate covering this
+# machine's LAN IPs is generated automatically on startup.
+use_https: true
+tls_cert_file: "certs/server.crt"
+tls_key_file: "certs/server.key"
+
 # NTFS root for all shared data (created on first run if missing)
 data_root: "D:/old/relex/personal"
 
@@ -10,7 +18,7 @@ data_root: "D:/old/relex/personal"
 database_path: "data/fileshare.db"
 
 # JWT settings — change secret in production
-jwt_secret: "change-me-to-a-long-random-string"
+jwt_secret: "changeme"
 jwt_algorithm: "HS256"
 jwt_expire_minutes: 1440
 

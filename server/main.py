@@ -101,14 +101,28 @@ app = create_app()
 def main():
     import uvicorn
 
+    from server.tls import ensure_server_cert
+
     load_settings()
     s = get_settings()
-    uvicorn.run(
-        "server.main:app",
+
+    kwargs = dict(
         host=s.host,
         port=s.port,
         reload=False,
+        timeout_keep_alive=600,
     )
+
+    ssl_files = ensure_server_cert(s)
+    if ssl_files:
+        cert_file, key_file = ssl_files
+        kwargs["ssl_certfile"] = cert_file
+        kwargs["ssl_keyfile"] = key_file
+        print(f"HTTPS enabled on https://{s.host}:{s.port} (cert: {cert_file})")
+    else:
+        print(f"HTTP on http://{s.host}:{s.port} (use_https is off)")
+
+    uvicorn.run("server.main:app", **kwargs)
 
 
 if __name__ == "__main__":

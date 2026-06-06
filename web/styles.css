@@ -259,6 +259,18 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   white-space: nowrap;
 }
 
+.preview-save {
+  background: var(--highlight);
+  border: none;
+  color: #fff;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.85rem;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.preview-save:disabled { opacity: 0.5; }
+
 .preview-close {
   background: transparent;
   border: 1px solid var(--border);
@@ -266,6 +278,91 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   padding: 0.4rem 0.85rem;
   font-size: 0.85rem;
   border-radius: 6px;
+}
+
+.preview-hint {
+  padding: 0.6rem 1rem;
+  padding-bottom: max(0.6rem, env(safe-area-inset-bottom));
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.save-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  animation: fade-in 0.15s ease;
+}
+
+.save-card {
+  width: 100%;
+  max-width: 360px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.25rem;
+}
+
+.save-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.save-status {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 0.75rem;
+}
+
+.save-progress {
+  height: 6px;
+  background: var(--accent);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 1.1rem;
+}
+
+.save-bar {
+  height: 100%;
+  width: 0;
+  background: var(--highlight);
+  transition: width 0.15s ease;
+}
+
+.save-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.save-actions button {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  font-size: 0.95rem;
+  border-radius: 8px;
+}
+
+.save-primary {
+  background: var(--highlight);
+  color: #fff;
+  border: none;
+}
+
+.save-secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
 }
 
 .preview-body {

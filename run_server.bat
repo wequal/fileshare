@@ -7,4 +7,6 @@ if not exist config.yaml (
 python -m venv venv 2>nul
 call venv\Scripts\activate.bat
 pip install -r requirements.txt -q
-python -m uvicorn server.main:app --host 0.0.0.0 --port 8443 --timeout-keep-alive 600
+REM Runs server.main:main(), which reads host/port from config.yaml and
+REM enables HTTPS (auto-generating a self-signed cert) when use_https is set.
+python -m server

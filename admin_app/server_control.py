@@ -79,7 +79,7 @@ class ServerProcess:
         with self._lock:
             self._buf.clear()
 
-    def start(self, host: str, port: int) -> None:
+    def start(self, host: str, port: int, settings=None) -> None:
         if self.is_running():
             return
 
@@ -95,6 +95,19 @@ class ServerProcess:
             "--timeout-keep-alive",
             "600",
         ]
+
+        if settings is not None and getattr(settings, "use_https", False):
+            from server.tls import ensure_server_cert
+
+            ssl_files = ensure_server_cert(settings)
+            if ssl_files:
+                cert_file, key_file = ssl_files
+                cmd += [
+                    "--ssl-certfile",
+                    cert_file,
+                    "--ssl-keyfile",
+                    key_file,
+                ]
 
         env = os.environ.copy()
         env.setdefault("PYTHONUNBUFFERED", "1")
@@ -151,9 +164,9 @@ class ServerProcess:
             except subprocess.TimeoutExpired:
                 pass
 
-    def restart(self, host: str, port: int) -> None:
+    def restart(self, host: str, port: int, settings=None) -> None:
         self.stop()
-        self.start(host, port)
+        self.start(host, port, settings)
 
     # ---- internal ------------------------------------------------------
 

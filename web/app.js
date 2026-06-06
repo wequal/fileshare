@@ -13,7 +13,7 @@ let canWrite = false;
 let chunkSize = 8 * 1024 * 1024;
 let maxParallel = 4;
 
-const PREVIEWABLE_IMAGE_EXT = /\.(jpe?g|png|gif|webp|bmp|avif|svg)$/i;
+const PREVIEWABLE_IMAGE_EXT = /\.(jpe?g|png|gif|webp|bmp|avif|svg|heic|heif)$/i;
 const listObjectUrls = new Set();
 let thumbObserver = null;
 
@@ -125,9 +125,11 @@ function openImagePreview(path, name) {
   overlay.innerHTML = `
     <div class="preview-toolbar">
       <span class="preview-name"></span>
+      <button type="button" class="preview-save hidden"></button>
       <button type="button" class="preview-close">Close</button>
     </div>
     <div class="preview-body"><div class="preview-loader">Loading…</div></div>
+    <div class="preview-hint hidden"></div>
   `;
   overlay.querySelector(".preview-name").textContent = name;
   document.body.appendChild(overlay);
@@ -149,6 +151,9 @@ function openImagePreview(path, name) {
   });
   document.addEventListener("keydown", onKey);
 
+  const saveBtn = overlay.querySelector(".preview-save");
+  const hint = overlay.querySelector(".preview-hint");
+
   fetchAsBlob(path)
     .then((blob) => {
       blobUrl = URL.createObjectURL(blob);
@@ -159,6 +164,31 @@ function openImagePreview(path, name) {
       const body = overlay.querySelector(".preview-body");
       body.innerHTML = "";
       body.appendChild(img);
+
+      if (canShareFiles()) {
+        saveBtn.textContent = "Save to Photos";
+        show(saveBtn);
+        saveBtn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          saveBtn.disabled = true;
+          // The blob is already loaded, so this tap's activation is intact.
+          const result = await attemptShare(blob, name);
+          saveBtn.disabled = false;
+          if (result === "unsupported") downloadBlob(blob, name);
+        });
+      } else {
+        saveBtn.textContent = "Download";
+        show(saveBtn);
+        saveBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          downloadBlob(blob, name);
+        });
+        if (isIOS) {
+          hint.textContent =
+            "To save to Photos: touch and hold the image, then tap “Add to Photos”.";
+          show(hint);
+        }
+      }
     })
     .catch((e) => {
       const body = overlay.querySelector(".preview-body");
@@ -263,13 +293,14 @@ async function loadDirectory(path) {
     const actions = li.querySelector(".actions");
 
     if (!isDir) {
+      const isMedia = entry.type === "image" || entry.type === "video";
       const dl = document.createElement("a");
-      dl.textContent = "Get";
+      dl.textContent = isMedia && canShareFiles() ? "Save" : "Get";
       dl.href = "#";
       dl.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        downloadWithAuth(entry.path, entry.name);
+        saveEntry(entry);
       });
       actions.appendChild(dl);
     }
@@ -302,6 +333,193 @@ function escapeHtml(s) {
   return d.innerHTML;
 }
 
+const MIME_BY_EXT = {
+  jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", gif: "image/gif",
+  webp: "image/webp", bmp: "image/bmp", avif: "image/avif", svg: "image/svg+xml",
+  heic: "image/heic", heif: "image/heif",
+  mp4: "video/mp4", m4v: "video/mp4", mov: "video/quicktime",
+  avi: "video/x-msvideo", mkv: "video/x-matroska", webm: "video/webm",
+};
+
+function mimeForName(name) {
+  const ext = (name.split(".").pop() || "").toLowerCase();
+  return MIME_BY_EXT[ext] || "";
+}
+
+// Web Share API (level 2 / files) is the only way a web page can hand a photo
+// or video to the iOS "Save to Photos" sheet. It requires a secure context
+// (HTTPS or localhost); on a plain-HTTP LAN it is undefined and we fall back.
+function canShareFiles() {
+  return (
+    typeof navigator !== "undefined" &&
+    typeof navigator.share === "function" &&
+    typeof navigator.canShare === "function"
+  );
+}
+
+// Hand a loaded blob to the native share sheet. Returns:
+//   "ok"          - shared successfully
+//   "dismissed"   - user closed the share sheet
+//   "retry"       - blocked because the tap's activation expired (a long
+//                   download consumed it); needs a fresh user tap
+//   "unsupported" - this device/file cannot be shared
+async function attemptShare(blob, filename) {
+  if (!canShareFiles()) return "unsupported";
+  const type = mimeForName(filename) || blob.type || "application/octet-stream";
+  let file;
+  try {
+    file = new File([blob], filename, { type });
+  } catch {
+    return "unsupported";
+  }
+  if (!navigator.canShare({ files: [file] })) return "unsupported";
+  try {
+    await navigator.share({ files: [file] });
+    return "ok";
+  } catch (e) {
+    if (e && e.name === "AbortError") return "dismissed";
+    if (e && e.name === "NotAllowedError") return "retry";
+    return "unsupported";
+  }
+}
+
+// iOS only opens the share sheet from inside a user gesture, and a large video
+// can't be fetched within that short window. So download first (with progress),
+// then let the user tap "Save to Photos" on the loaded blob — a fresh gesture
+// that reliably opens the sheet.
+function openMediaSaveOverlay(entry) {
+  const { path, name } = entry;
+
+  const overlay = document.createElement("div");
+  overlay.className = "save-overlay";
+  overlay.innerHTML = `
+    <div class="save-card">
+      <div class="save-title"></div>
+      <div class="save-status">Preparing…</div>
+      <div class="save-progress"><div class="save-bar"></div></div>
+      <div class="save-actions"></div>
+    </div>
+  `;
+  overlay.querySelector(".save-title").textContent = name;
+  document.body.appendChild(overlay);
+
+  const statusEl = overlay.querySelector(".save-status");
+  const bar = overlay.querySelector(".save-bar");
+  const actions = overlay.querySelector(".save-actions");
+
+  let blob = null;
+  let xhr = null;
+
+  const close = () => {
+    if (xhr && xhr.readyState !== 4) {
+      try { xhr.abort(); } catch {}
+    }
+    overlay.remove();
+  };
+
+  const addButton = (label, primary, handler) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = label;
+    b.className = primary ? "save-primary" : "save-secondary";
+    b.addEventListener("click", handler);
+    actions.appendChild(b);
+    return b;
+  };
+
+  const offerSaveButton = () => {
+    actions.innerHTML = "";
+    bar.style.width = "100%";
+    statusEl.textContent = "Ready — tap to save to Photos.";
+    addButton("Save to Photos", true, async () => {
+      const result = await attemptShare(blob, name);
+      if (result === "ok" || result === "dismissed") {
+        close();
+      } else if (result === "unsupported") {
+        downloadBlob(blob, name);
+        close();
+      }
+      // "retry": leave the button up so the user can tap again.
+    });
+    addButton("Download instead", false, () => {
+      downloadBlob(blob, name);
+      close();
+    });
+    addButton("Cancel", false, close);
+  };
+
+  const failed = (msg) => {
+    statusEl.textContent = msg;
+    bar.style.width = "0";
+    actions.innerHTML = "";
+    addButton("Close", false, close);
+  };
+
+  // Cancel button is available immediately so a large download can be aborted.
+  addButton("Cancel", false, close);
+
+  xhr = new XMLHttpRequest();
+  xhr.open("GET", `${API}/files/download?path=${encodeURIComponent(path)}`);
+  xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+  xhr.responseType = "blob";
+  xhr.onprogress = (e) => {
+    if (e.lengthComputable && e.total > 0) {
+      const pct = Math.round((e.loaded / e.total) * 100);
+      bar.style.width = `${pct}%`;
+      statusEl.textContent = `Preparing… ${pct}%`;
+    }
+  };
+  xhr.onload = async () => {
+    if (xhr.status === 401) {
+      logout();
+      close();
+      return;
+    }
+    if (xhr.status < 200 || xhr.status >= 300) {
+      failed(`Could not load (HTTP ${xhr.status}).`);
+      return;
+    }
+    blob = xhr.response;
+    // A small file may still be inside the tap's activation window: try directly.
+    const result = await attemptShare(blob, name);
+    if (result === "ok" || result === "dismissed") {
+      close();
+    } else if (result === "unsupported") {
+      downloadBlob(blob, name);
+      close();
+    } else {
+      offerSaveButton();
+    }
+  };
+  xhr.onerror = () => failed("Network error while preparing the file.");
+  xhr.send();
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.rel = "noopener";
+  // iOS Safari needs the anchor in the DOM, and revoking the object URL
+  // synchronously can cancel the in-flight download, so defer it.
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+// "Get"/"Save" action: hand photos/videos to the native share sheet
+// ("Save to Photos" on iOS) when possible; otherwise download the file.
+function saveEntry(entry) {
+  const isMedia = entry.type === "image" || entry.type === "video";
+  if (isMedia && canShareFiles()) {
+    openMediaSaveOverlay(entry);
+    return;
+  }
+  downloadWithAuth(entry.path, entry.name);
+}
+
 async function downloadWithAuth(path, filename) {
   let res;
   try {
@@ -322,17 +540,7 @@ async function downloadWithAuth(path, filename) {
     return;
   }
   const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.rel = "noopener";
-  // iOS Safari needs the anchor in the DOM, and revoking the object URL
-  // synchronously can cancel the in-flight download, so defer it.
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  downloadBlob(blob, filename);
 }
 
 function isVideoFile(file) {

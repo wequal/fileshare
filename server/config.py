@@ -10,6 +10,12 @@ from pydantic import BaseModel, Field
 class Settings(BaseModel):
     host: str = "0.0.0.0"
     port: int = 8443
+    # HTTPS: required for iOS "Save to Photos" (Web Share) and other secure-context
+    # features. When enabled, a self-signed cert is auto-generated if the files
+    # below are missing.
+    use_https: bool = False
+    tls_cert_file: str = "certs/server.crt"
+    tls_key_file: str = "certs/server.key"
     data_root: str = "D:/FileShareData"
     database_path: str = "data/fileshare.db"
     jwt_secret: str = "change-me"
@@ -43,6 +49,20 @@ class Settings(BaseModel):
         if not p.is_absolute():
             p = Path(__file__).resolve().parent.parent / p
         return p.resolve()
+
+    def _resolve_relative(self, value: str) -> Path:
+        p = Path(value)
+        if not p.is_absolute():
+            p = Path(__file__).resolve().parent.parent / p
+        return p.resolve()
+
+    @property
+    def tls_cert_path(self) -> Path:
+        return self._resolve_relative(self.tls_cert_file)
+
+    @property
+    def tls_key_path(self) -> Path:
+        return self._resolve_relative(self.tls_key_file)
 
 
 _settings: Optional[Settings] = None

@@ -217,15 +217,63 @@ Remove it later with:
 - `data/fileshare.db` (users & grants)
 - `D:\FileShareData\` (or your `data_root`) — actual photos/videos
 
+## Enable HTTPS (required for iPhone "Save to Photos")
+
+iOS only lets a web page hand a photo/video to the **Photos** app through the
+native Share Sheet (the Web Share API), and that API is available **only over
+HTTPS**. On plain `http://` the app falls back to downloading into the Files
+app. Turn on HTTPS to get one-tap **Save to Photos** (and to save videos).
+
+### 1. Turn it on
+
+Either flip the **Use HTTPS** switch in the admin app (Settings tab), or edit
+`config.yaml`:
+
+```yaml
+use_https: true
+tls_cert_file: "certs/server.crt"
+tls_key_file: "certs/server.key"
+```
+
+On the next start, a self-signed certificate covering this PC's LAN IPs is
+generated automatically (you can also pre-create it):
+
+```bat
+venv\Scripts\python scripts\generate_cert.py
+```
+
+The server now serves `https://<LAN-IP>:8443` (same port; the firewall rule
+from section 5 still applies).
+
+### 2. Trust the certificate on iPhone
+
+Because the cert is self-signed, Safari shows a privacy warning the first time:
+
+- **Quick path:** open `https://<LAN-IP>:8443`, tap **Show Details → visit this
+  website**. The page is now a secure context, so **Save to Photos** works.
+- **Clean path (no warnings):** install and trust the cert:
+  1. Send `certs/server.crt` to the iPhone (AirDrop / email) and open it.
+  2. **Settings → General → VPN & Device Management** → install the profile.
+  3. **Settings → General → About → Certificate Trust Settings** → enable full
+     trust for **Home Fileshare**.
+
+### Notes
+
+- The cert embeds the PC's current LAN IP. If that IP changes, regenerate it:
+  `python scripts\generate_cert.py --force`, then re-trust on the iPhone.
+- The certificate is valid for 800 days (iOS rejects longer); regenerate before
+  it expires.
+- `certs/` is git-ignored — the private key stays on the machine.
+
 ## Quick reference
 
 ```bat
 cd C:\Apps\fileshare
 copy config.example.yaml config.yaml
-:: edit config.yaml
+:: edit config.yaml  (set use_https: true for iPhone Save to Photos)
 run_server.bat
 ```
 
-iPhone URL: `http://<server-LAN-IPv4>:8443`
+iPhone URL: `http://<server-LAN-IPv4>:8443` (or `https://…` when `use_https` is on)
 
 More detail: [README.md](README.md) · Native iOS later: [docs/IOS_CLIENT.md](docs/IOS_CLIENT.md)
